@@ -1,0 +1,114 @@
+[
+    {
+        "category": "missing_scope",
+        "endpoint": "/metrics",
+        "method": "POST",
+        "description": "Token with read:metrics tries to write",
+        "token_scopes": [
+            "read:metrics"
+        ],
+        "expected_status": 403,
+        "body": {
+            "name": "test_metric",
+            "metric_type": "counter",
+            "value": 1.0
+        }
+    },
+    {
+        "category": "missing_scope",
+        "endpoint": "/users/user-001",
+        "method": "PUT",
+        "description": "Token with read:users tries to modify (needs admin:users)",
+        "token_scopes": [
+            "read:users"
+        ],
+        "expected_status": 403,
+        "body": {
+            "display_name": "Hacked Name"
+        }
+    },
+    {
+        "category": "cross_resource_access",
+        "endpoint": "/users/user-001",
+        "method": "PUT",
+        "description": "Token with write:metrics tries to modify users",
+        "token_scopes": [
+            "read:metrics",
+            "write:metrics"
+        ],
+        "expected_status": 403,
+        "body": {
+            "role": "admin"
+        }
+    },
+    {
+        "category": "no_token",
+        "endpoint": "/metrics",
+        "method": "GET",
+        "description": "Request without auth header",
+        "token_scopes": null,
+        "expected_status": 401
+    },
+    {
+        "category": "invalid_token",
+        "endpoint": "/metrics",
+        "method": "GET",
+        "description": "Malformed JWT",
+        "raw_token": "not.a.valid.jwt.token",
+        "expected_status": 401
+    },
+    {
+        "category": "expired_token",
+        "endpoint": "/metrics",
+        "method": "GET",
+        "description": "Expired JWT",
+        "token_config": {
+            "expired": true,
+            "scopes": [
+                "read:metrics"
+            ]
+        },
+        "expected_status": 401
+    },
+    {
+        "category": "scope_injection",
+        "endpoint": "/users/user-001",
+        "method": "PUT",
+        "description": "Token claims admin scope not actually granted",
+        "note": "This tests that scopes in token are validated against actual grants",
+        "forged_scopes": [
+            "admin:users",
+            "admin:system"
+        ],
+        "expected_status": 403,
+        "body": {
+            "role": "admin"
+        }
+    },
+    {
+        "category": "audience_mismatch",
+        "endpoint": "/metrics",
+        "method": "GET",
+        "description": "Token with wrong audience claim",
+        "token_config": {
+            "audience": "wrong-service",
+            "scopes": [
+                "read:metrics"
+            ]
+        },
+        "expected_status": 401
+    },
+    {
+        "category": "issuer_mismatch",
+        "endpoint": "/metrics",
+        "method": "GET",
+        "description": "Token from unknown issuer",
+        "token_config": {
+            "issuer": "malicious-issuer",
+            "scopes": [
+                "read:metrics"
+            ]
+        },
+        "expected_status": 401
+    }
+]

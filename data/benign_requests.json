@@ -1,0 +1,55 @@
+[
+    {
+        "endpoint": "/metrics",
+        "method": "POST",
+        "description": "Valid metric creation",
+        "body": {
+            "name": "request_count",
+            "metric_type": "counter",
+            "value": 42.0,
+            "description": "Total HTTP requests",
+            "tags": {
+                "service": "api",
+                "env": "prod"
+            }
+        }
+    },
+    {
+        "endpoint": "/metrics",
+        "method": "POST",
+        "description": "Valid gauge metric",
+        "body": {
+            "name": "memory_usage_mb",
+            "metric_type": "gauge",
+            "value": 1024.5
+        }
+    },
+    {
+        "endpoint": "/metrics",
+        "method": "GET",
+        "description": "List metrics",
+        "query": {
+            "limit": 50,
+            "offset": 0
+        }
+    },
+    {
+        "endpoint": "/users",
+        "method": "GET",
+        "description": "List users"
+    },
+    {
+        "endpoint": "/users/user-001",
+        "method": "GET",
+        "description": "Get specific user"
+    },
+    {
+        "endpoint": "/users/user-001",
+        "method": "PUT",
+        "description": "Valid user update",
+        "body": {
+            "display_name": "Alice Updated",
+            "email": "alice.new@internal.example"
+        }
+    }
+]

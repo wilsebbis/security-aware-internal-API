@@ -1,0 +1,211 @@
+[
+    {
+        "category": "oversized_payload",
+        "endpoint": "/metrics",
+        "method": "POST",
+        "description": "Name exceeds 64 char limit",
+        "body": {
+            "name": "this_is_a_very_long_metric_name_that_exceeds_the_maximum_allowed_length_of_sixty_four_characters",
+            "metric_type": "counter",
+            "value": 1.0
+        }
+    },
+    {
+        "category": "oversized_payload",
+        "endpoint": "/metrics",
+        "method": "POST",
+        "description": "Description exceeds 256 char limit",
+        "body": {
+            "name": "test_metric",
+            "metric_type": "gauge",
+            "value": 1.0,
+            "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit."
+        }
+    },
+    {
+        "category": "type_confusion",
+        "endpoint": "/metrics",
+        "method": "POST",
+        "description": "String instead of number for value",
+        "body": {
+            "name": "test_metric",
+            "metric_type": "counter",
+            "value": "not_a_number"
+        }
+    },
+    {
+        "category": "type_confusion",
+        "endpoint": "/metrics",
+        "method": "POST",
+        "description": "Number string instead of number (strict mode fails)",
+        "body": {
+            "name": "test_metric",
+            "metric_type": "counter",
+            "value": "123"
+        }
+    },
+    {
+        "category": "type_confusion",
+        "endpoint": "/metrics",
+        "method": "POST",
+        "description": "Array instead of object for tags",
+        "body": {
+            "name": "test_metric",
+            "metric_type": "counter",
+            "value": 1.0,
+            "tags": [
+                "tag1",
+                "tag2"
+            ]
+        }
+    },
+    {
+        "category": "unexpected_nesting",
+        "endpoint": "/metrics",
+        "method": "POST",
+        "description": "Nested object where string expected",
+        "body": {
+            "name": {
+                "nested": "object"
+            },
+            "metric_type": "counter",
+            "value": 1.0
+        }
+    },
+    {
+        "category": "unexpected_nesting",
+        "endpoint": "/metrics",
+        "method": "POST",
+        "description": "Deeply nested tags",
+        "body": {
+            "name": "test_metric",
+            "metric_type": "counter",
+            "value": 1.0,
+            "tags": {
+                "level1": {
+                    "level2": {
+                        "level3": "deep"
+                    }
+                }
+            }
+        }
+    },
+    {
+        "category": "extra_fields",
+        "endpoint": "/metrics",
+        "method": "POST",
+        "description": "Unknown field (extra='forbid' rejects)",
+        "body": {
+            "name": "test_metric",
+            "metric_type": "counter",
+            "value": 1.0,
+            "unknown_field": "should_be_rejected"
+        }
+    },
+    {
+        "category": "extra_fields",
+        "endpoint": "/metrics",
+        "method": "POST",
+        "description": "SQL injection attempt in extra field",
+        "body": {
+            "name": "test_metric",
+            "metric_type": "counter",
+            "value": 1.0,
+            "injection": "'; DROP TABLE metrics; --"
+        }
+    },
+    {
+        "category": "unicode_edge_cases",
+        "endpoint": "/metrics",
+        "method": "POST",
+        "description": "Unicode in metric name (fails alphanumeric check)",
+        "body": {
+            "name": "метрика_тест",
+            "metric_type": "counter",
+            "value": 1.0
+        }
+    },
+    {
+        "category": "unicode_edge_cases",
+        "endpoint": "/metrics",
+        "method": "POST",
+        "description": "Zero-width characters in name",
+        "body": {
+            "name": "test\u200bmetric",
+            "metric_type": "counter",
+            "value": 1.0
+        }
+    },
+    {
+        "category": "unicode_edge_cases",
+        "endpoint": "/users/user-001",
+        "method": "PUT",
+        "description": "Homoglyph attack in email",
+        "body": {
+            "email": "alice@іnternal.example"
+        }
+    },
+    {
+        "category": "invalid_enum",
+        "endpoint": "/metrics",
+        "method": "POST",
+        "description": "Invalid metric type",
+        "body": {
+            "name": "test_metric",
+            "metric_type": "invalid_type",
+            "value": 1.0
+        }
+    },
+    {
+        "category": "invalid_enum",
+        "endpoint": "/users/user-001",
+        "method": "PUT",
+        "description": "Invalid user role",
+        "body": {
+            "role": "superadmin"
+        }
+    },
+    {
+        "category": "boundary_values",
+        "endpoint": "/metrics",
+        "method": "POST",
+        "description": "Infinity value (exceeds bounds)",
+        "body": {
+            "name": "test_metric",
+            "metric_type": "gauge",
+            "value": 1e16
+        }
+    },
+    {
+        "category": "boundary_values",
+        "endpoint": "/metrics",
+        "method": "POST",
+        "description": "Negative infinity",
+        "body": {
+            "name": "test_metric",
+            "metric_type": "gauge",
+            "value": -1e16
+        }
+    },
+    {
+        "category": "log_injection",
+        "endpoint": "/metrics",
+        "method": "POST",
+        "description": "Newline injection in description",
+        "body": {
+            "name": "test_metric",
+            "metric_type": "counter",
+            "value": 1.0,
+            "description": "Normal text\n{\"injected\": \"json\"}"
+        }
+    },
+    {
+        "category": "log_injection",
+        "endpoint": "/users/user-001",
+        "method": "PUT",
+        "description": "ANSI escape codes in name",
+        "body": {
+            "display_name": "Alice\u001b[31mRED\u001b[0m"
+        }
+    }
+]

@@ -1,0 +1,127 @@
+[
+    {
+        "category": "high_volume",
+        "description": "Rapid sequential requests to same endpoint",
+        "pattern": {
+            "endpoint": "/metrics",
+            "method": "GET",
+            "count": 150,
+            "interval_ms": 50
+        },
+        "expected_behavior": "Rate limited after ~100 requests"
+    },
+    {
+        "category": "high_volume",
+        "description": "Parallel burst requests",
+        "pattern": {
+            "endpoint": "/users",
+            "method": "GET",
+            "count": 50,
+            "parallel": true
+        },
+        "expected_behavior": "Rate limited after ~30 requests (users has lower limit)"
+    },
+    {
+        "category": "malformed_storm",
+        "description": "Rapid malformed requests trigger penalty escalation",
+        "pattern": {
+            "endpoint": "/metrics",
+            "method": "POST",
+            "count": 10,
+            "interval_ms": 100,
+            "malformed": true
+        },
+        "expected_behavior": "Blocked after 5 malformed requests",
+        "sample_body": {
+            "name": "valid_name",
+            "metric_type": "invalid",
+            "value": "not_number"
+        }
+    },
+    {
+        "category": "penalty_accumulation",
+        "description": "Mixed valid/invalid requests to test quota reduction",
+        "sequence": [
+            {
+                "valid": true,
+                "expected": 200
+            },
+            {
+                "valid": false,
+                "expected": 422
+            },
+            {
+                "valid": true,
+                "expected": 200
+            },
+            {
+                "valid": false,
+                "expected": 422
+            },
+            {
+                "valid": false,
+                "expected": 422
+            },
+            {
+                "valid": true,
+                "expected": 200
+            },
+            {
+                "valid": false,
+                "expected": 422
+            },
+            {
+                "valid": false,
+                "expected": 429
+            }
+        ],
+        "expected_behavior": "Quota halved after each malformed request"
+    },
+    {
+        "category": "rotating_endpoints",
+        "description": "Attempt to bypass per-route limits via endpoint rotation",
+        "pattern": {
+            "endpoints": [
+                "/metrics",
+                "/users",
+                "/metrics/m1",
+                "/users/u1"
+            ],
+            "count": 200,
+            "interval_ms": 10
+        },
+        "expected_behavior": "Per-token limit still applies across endpoints"
+    },
+    {
+        "category": "slow_probe",
+        "description": "Low-rate probing to avoid detection",
+        "pattern": {
+            "endpoint": "/metrics",
+            "method": "POST",
+            "count": 100,
+            "interval_ms": 1000,
+            "malformed": true
+        },
+        "expected_behavior": "Penalty accumulates over time, eventually blocked",
+        "note": "10% malformed rate over extended period"
+    },
+    {
+        "category": "recovery",
+        "description": "Test penalty decay after good behavior",
+        "sequence": [
+            {
+                "phase": "abuse",
+                "malformed_count": 4
+            },
+            {
+                "phase": "wait",
+                "minutes": 10
+            },
+            {
+                "phase": "valid",
+                "count": 5
+            }
+        ],
+        "expected_behavior": "Quota partially restored after decay period"
+    }
+]
