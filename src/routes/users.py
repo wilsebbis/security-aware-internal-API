@@ -1,6 +1,11 @@
 """
 Users API routes with scope-guarded access.
 
+# SECURITY BOUNDARY:
+# Do not assume caller identity is trustworthy.
+# admin:users does NOT inherit from read:users — each checked explicitly.
+# All inputs validated with hostile assumptions.
+
 Demonstrates:
 - Hierarchical scope model (read:users vs admin:users)
 - No implicit privilege inheritance
@@ -8,7 +13,7 @@ Demonstrates:
 """
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -136,6 +141,6 @@ async def update_user(
         user["email"] = body.email
     if body.role is not None:
         user["role"] = body.role.value
-    user["last_active"] = datetime.utcnow()
+    user["last_active"] = datetime.now(UTC)
     
     return APIResponse(data=UserResponse(**user))

@@ -11,15 +11,29 @@ Most internal APIs fail because of false trust assumptions:
 
 This project explicitly rejects those assumptions. Internal callers are treated as potentially compromised, tokens as capabilities (not identities), and malformed input as intentional.
 
-## Threat Model
+## Architecture
 
-| Threat | Example |
-|--------|---------|
-| Compromised service | Stolen OAuth token from logs |
-| Privilege confusion | Service A calls with broader scope |
-| Input abuse | Overlong payloads, type confusion |
-| Automation abuse | High-rate retries probing edges |
-| Log poisoning | Malicious input to corrupt logs |
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                           Request Flow                              │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│   Token ──▶ JWT Validator ──▶ Scope Guard ──▶ Rate Limiter         │
+│                │                   │               │                │
+│                ▼                   ▼               ▼                │
+│          [token_hash]       [403 if missing]  [429 if exceeded]    │
+│                                                    │                │
+│                                                    ▼                │
+│                              Route Handler ◀── Pydantic Validator  │
+│                                   │               │                │
+│                                   ▼               ▼                │
+│                           Security Logger   [422 if malformed]     │
+│                                   │          + penalty applied     │
+│                                   ▼                                 │
+│                          Structured JSON Log                        │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 ## Quick Start
 
@@ -30,9 +44,38 @@ uv sync
 # Run dev server
 uv run uvicorn src.main:app --reload
 
-# Run tests
-uv run pytest tests/ -v
+# Run tests (32/32 including adversarial corpora)
+uv run pytest -q
 ```
+
+## Security Guarantees
+
+- **No privilege inheritance**: `read:users` does NOT grant `admin:users`
+- **ASCII-only identifiers**: Metric names and emails reject Unicode (blocks homoglyph attacks)
+- **Token hash only**: Raw tokens never appear in logs
+- **Sanitized errors**: Validation failures return generic messages, no internal details
+- **Escalating penalties**: Repeated malformed inputs reduce quota exponentially
+- **Abuse classification**: Every log entry tagged with intent (`BENIGN`, `MALFORMED`, `ESCALATION_ATTEMPT`)
+
+## Non-Goals
+
+This is a **reference implementation**, not a drop-in solution:
+
+- ❌ Production-grade persistence (in-memory stores only)
+- ❌ Centralized policy engine (OPA, Cedar)
+- ❌ ML-based anomaly detection
+- ❌ Multi-tenant isolation
+- ❌ mTLS or certificate-based auth
+
+## Threat Model
+
+| Threat | Example |
+|--------|---------|
+| Compromised service | Stolen OAuth token from logs |
+| Privilege confusion | Service A calls with broader scope |
+| Input abuse | Overlong payloads, type confusion |
+| Automation abuse | High-rate retries probing edges |
+| Log poisoning | Malicious input to corrupt logs |
 
 ## Security Features
 
@@ -46,7 +89,7 @@ No implicit privilege inheritance. Each route requires explicit scope.
 ### 2. Strict Validation
 - Pydantic `strict=True` — no implicit type coercion
 - `extra="forbid"` — unknown fields rejected
-- Length limits on all strings
+- ASCII-only for identifiers (metric names, emails)
 - Enum constraints for categorical fields
 
 ### 3. Abuse-Aware Rate Limiting
@@ -85,6 +128,13 @@ Test cases in `data/`:
 | `malformed_requests.json` | Type confusion, oversized, unicode attacks |
 | `privilege_escalation_attempts.json` | Scope misuse, cross-resource access |
 | `rate_limit_abuse.json` | Volume attacks, malformed storms |
+
+## Known Limitations
+
+- **In-process rate limiting**: Not shared across replicas. Production would use Redis.
+- **Code-level authorization**: No centralized policy engine (OPA). Scope guards are route dependencies.
+- **Rule-based abuse detection**: No ML anomaly detection (intentionally out of scope).
+- **No persistence**: In-memory stores reset on restart.
 
 ## License
 

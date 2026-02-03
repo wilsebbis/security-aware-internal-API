@@ -113,3 +113,56 @@ class TestRateLimitIntegration:
         # Should eventually get 429 (blocked due to malformed)
         # Note: May get 422 first, then 429 after penalty accumulates
         assert response.status_code in [422, 429]
+    
+    @pytest.mark.asyncio
+    async def test_valid_token_blocked_after_behavioral_drift(
+        self,
+        client: AsyncClient,
+        write_metrics_token: str,
+    ):
+        """
+        Chaos test: Valid token, correct scope, but repeated malformed
+        payloads cause eventual blocking.
+        
+        This demonstrates correctness under behavioral drift — not just
+        static permission checks.
+        """
+        # Phase 1: Valid request succeeds
+        response = await client.post(
+            "/metrics",
+            headers={"Authorization": f"Bearer {write_metrics_token}"},
+            json={
+                "name": "valid_metric",
+                "metric_type": "counter",
+                "value": 1.0,
+            },
+        )
+        assert response.status_code == 201, "Valid request should succeed initially"
+        
+        # Phase 2: Send 5 malformed requests (triggers block threshold)
+        for _ in range(5):
+            await client.post(
+                "/metrics",
+                headers={"Authorization": f"Bearer {write_metrics_token}"},
+                json={
+                    "name": "test",
+                    "metric_type": "INVALID_TYPE",  # Malformed
+                    "value": 1.0,
+                },
+            )
+        
+        # Phase 3: Now even valid requests should be blocked
+        response = await client.post(
+            "/metrics",
+            headers={"Authorization": f"Bearer {write_metrics_token}"},
+            json={
+                "name": "another_valid_metric",
+                "metric_type": "gauge",
+                "value": 42.0,
+            },
+        )
+        assert response.status_code == 429, (
+            "Token should be blocked after malformed request storm, "
+            f"but got {response.status_code}"
+        )
+

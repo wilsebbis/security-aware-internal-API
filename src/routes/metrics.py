@@ -1,6 +1,11 @@
 """
 Metrics API routes with scope-guarded access.
 
+# SECURITY BOUNDARY:
+# Do not assume caller identity is trustworthy.
+# Authorization enforced strictly by scope — no inheritance.
+# All inputs validated with hostile assumptions.
+
 Demonstrates:
 - Scope-based authorization (read:metrics vs write:metrics)
 - Strict input validation
@@ -9,7 +14,7 @@ Demonstrates:
 """
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -116,7 +121,7 @@ async def create_metric(
     )
     
     # Create metric
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     metric = {
         "id": str(uuid.uuid4()),
         "name": body.name,
@@ -173,6 +178,6 @@ async def update_metric(
         metric["description"] = body.description
     if body.tags is not None:
         metric["tags"] = body.tags
-    metric["updated_at"] = datetime.utcnow()
+    metric["updated_at"] = datetime.now(UTC)
     
     return APIResponse(data=MetricResponse(**metric))
